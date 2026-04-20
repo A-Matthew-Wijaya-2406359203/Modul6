@@ -56,3 +56,20 @@ Pada tahap ini, kita menambahkan fitur *routing* dasar agar *server* bisa memval
    Jika kita menulis logika secara mentah di dalam blok `if-else`, kita akan menuliskan kode `fs::read_to_string`, penghitungan `len()`, makro `format!`, dan `stream.write_all` secara berulang (dua kali: satu di dalam `if`, satu di dalam `else`). 
    
    Hal ini melanggar prinsip **DRY (*Don't Repeat Yourself*)**. Melalui *refactoring*, kita menyadari bahwa yang berbeda dari kedua skenario tersebut hanyalah **status line** dan **nama file**-nya saja. Oleh karena itu, di Rust kita bisa menggunakan blok `if` sebagai *expression* yang mengembalikan nilai (dalam bentuk *tuple*). Variabel-variabel unik ini ditarik ke atas, sehingga proses membaca file dan membalas *stream* cukup ditulis **satu kali** saja di paling bawah. Kode jadi jauh lebih rapi, terpusat, dan mudah di-*maintain*.
+
+   ## Commit 4 Reflection Notes
+
+Pada commit ini, kita mensimulasikan apa yang terjadi jika ada sebuah *request* yang memakan waktu lama untuk diproses (seperti mengambil data yang berat dari *database* atau memproses file besar) pada server berbasis *single-thread*.
+
+Berikut adalah poin-poin yang dapat dipelajari dari simulasi lambat ini:
+
+1. **Routing dengan `match`**
+   Karena jumlah *route* bertambah (sekarang ada `/`, `/sleep`, dan *error* 404), kita mengganti `if-else` menjadi `match`. Di Rust, `match` lebih elegan dan aman karena memaksa kita untuk menangani semua kemungkinan pola data (*exhaustive pattern matching*). Kita menggunakan `&request_line[..]` untuk melakukan *matching* pada nilai *string slice*.
+
+2. **Simulasi Proses Berat (`thread::sleep`)**
+   Ketika ada *request* ke *endpoint* `/sleep`, server akan memanggil `thread::sleep(Duration::from_secs(10))`. Ini secara harfiah akan menghentikan eksekusi kode di *thread* tersebut selama 10 detik penuh sebelum melanjutkan pengiriman *response*.
+
+3. **Kelemahan *Single-Threaded Server***
+   Ketika kita membuka dua *tab* *browser*—satu mengakses `127.0.0.1:7878/sleep` dan satu lagi mengakses `127.0.0.1:7878/` (halaman normal) secara berurutan—halaman normal tersebut **ikut tertahan** (*loading* terus-menerus). 
+   
+   Hal ini terjadi karena server berjalan di atas *single thread*. Ketika *thread* tersebut sedang sleep selama 10 detik untuk menangani pengguna pertama, pengguna kedua yang meminta halaman normal yang seharusnya ringan harus rela menunggu *thread* tersebut bangun kembali. Ini menunjukkan mengapa server di tingkat produksi nyata (*production ready*) membutuhkan arsitektur *multi-threading* atau asinkron (*asynchronous*) agar *request* baru tidak terblokir oleh *request* sebelumnya yang lambat.
