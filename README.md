@@ -40,3 +40,19 @@ Pada tahap ini, kita memodifikasi fungsi `handle_connection` agar *server* tidak
 
 4. **`stream.write_all(response.as_bytes())`**
    Jaringan TCP mengirimkan data dalam wujud *raw bytes*, bukan teks *string* biasa. Oleh karena itu, variabel `response` yang tadinya berupa `String` harus dikonversi terlebih dahulu menggunakan metode `.as_bytes()`. Setelah itu, `write_all` akan memastikan seluruh *bytes* tersebut dikirimkan kembali melalui koneksi *stream* ke *browser* pengguna.
+
+   ## Commit 3 Reflection Notes
+
+![Commit 3 screen capture](./assets/images/commit3.png)
+
+Pada tahap ini, kita menambahkan fitur *routing* dasar agar *server* bisa memvalidasi *request* dan memberikan *response* yang berbeda (mengembalikan halaman sukses atau halaman *error* 404). Berikut adalah perubahan yang ada:
+
+1. **Memisahkan Response (Pengecekan Request)**
+   Kita mengekstrak baris pertama dari HTTP *request* menggunakan `.next().unwrap().unwrap()` yang berisi tipe *method* dan *path* tujuan (misalnya `GET / HTTP/1.1`). Dengan mengecek baris ini menggunakan blok `if-else`, *server* bisa menentukan:
+   * Jika *request* adalah `/` (halaman utama), gunakan status `200 OK` dan kembalikan `hello.html`.
+   * Jika *request* mengarah ke *path* lain (misalnya `/bad`), gunakan status `404 NOT FOUND` dan kembalikan `404.html`.
+
+2. **Perlu Refactoring karena**
+   Jika kita menulis logika secara mentah di dalam blok `if-else`, kita akan menuliskan kode `fs::read_to_string`, penghitungan `len()`, makro `format!`, dan `stream.write_all` secara berulang (dua kali: satu di dalam `if`, satu di dalam `else`). 
+   
+   Hal ini melanggar prinsip **DRY (*Don't Repeat Yourself*)**. Melalui *refactoring*, kita menyadari bahwa yang berbeda dari kedua skenario tersebut hanyalah **status line** dan **nama file**-nya saja. Oleh karena itu, di Rust kita bisa menggunakan blok `if` sebagai *expression* yang mengembalikan nilai (dalam bentuk *tuple*). Variabel-variabel unik ini ditarik ke atas, sehingga proses membaca file dan membalas *stream* cukup ditulis **satu kali** saja di paling bawah. Kode jadi jauh lebih rapi, terpusat, dan mudah di-*maintain*.
