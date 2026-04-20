@@ -17,3 +17,26 @@ Berikut adalah versi yang lebih singkat, lebih objektif, dan menggunakan pilihan
 
 6. **`println!("Request: {:#?}", http_request);`**
    Terakhir, vektor yang berisi kumpulan *request* dicetak ke terminal. *Format specifier* `{:#?}` digunakan untuk men-*debug* dan menampilkan isi *collection* secara lebih rapi dan terstruktur (*pretty-print*).
+
+   ## Commit 2 Reflection Notes
+
+   ![Commit 2 screen capture](assets/images/commit2.png)
+
+Pada tahap ini, kita memodifikasi fungsi `handle_connection` agar *server* tidak hanya membaca *request*, tetapi juga mengirimkan balasan (*response*) berupa file HTML ke *browser*. Berikut adalah insight yang didapat:
+
+1. **`fs::read_to_string("hello.html")`**
+   Kita menggunakan *module* `fs` (File System) bawaan Rust untuk membaca seluruh isi file `hello.html`. Fungsi ini akan langsung mengubah isi teks di dalam file tersebut menjadi sebuah tipe data `String` yang siap diolah.
+
+2. **Memahami Format HTTP Response**
+   Protokol HTTP memiliki format baku yang harus diikuti agar *browser* bisa membaca balasan kita. Formatnya adalah:
+   * **Status Line:** `HTTP/1.1 200 OK` (menandakan *request* berhasil).
+   * **Headers:** Informasi tambahan tentang data yang dikirim.
+   * **Baris Kosong (`\r\n\r\n`):** Pemisah wajib antara *headers* dan isi konten (*body*).
+   * **Body:** Konten utama, dalam hal ini adalah teks HTML kita.
+   Kita menggunakan makro `format!` di Rust untuk merangkai bagian-bagian ini secara dinamis.
+
+3. **Pentingnya Header `Content-Length`**
+   Kita menghitung panjang *string* HTML menggunakan `contents.len()` dan memasukkannya ke dalam *header* `Content-Length`. Ini sangat penting karena *header* ini memberi tahu *browser* ukuran pasti dari data yang sedang dikirim. Tanpa ini, *browser* mungkin akan kebingungan menentukan kapan proses penerimaan data benar-benar selesai.
+
+4. **`stream.write_all(response.as_bytes())`**
+   Jaringan TCP mengirimkan data dalam wujud *raw bytes*, bukan teks *string* biasa. Oleh karena itu, variabel `response` yang tadinya berupa `String` harus dikonversi terlebih dahulu menggunakan metode `.as_bytes()`. Setelah itu, `write_all` akan memastikan seluruh *bytes* tersebut dikirimkan kembali melalui koneksi *stream* ke *browser* pengguna.
