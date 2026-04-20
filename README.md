@@ -73,3 +73,20 @@ Berikut adalah poin-poin yang dapat dipelajari dari simulasi lambat ini:
    Ketika kita membuka dua *tab* *browser*—satu mengakses `127.0.0.1:7878/sleep` dan satu lagi mengakses `127.0.0.1:7878/` (halaman normal) secara berurutan—halaman normal tersebut **ikut tertahan** (*loading* terus-menerus). 
    
    Hal ini terjadi karena server berjalan di atas *single thread*. Ketika *thread* tersebut sedang sleep selama 10 detik untuk menangani pengguna pertama, pengguna kedua yang meminta halaman normal yang seharusnya ringan harus rela menunggu *thread* tersebut bangun kembali. Ini menunjukkan mengapa server di tingkat produksi nyata (*production ready*) membutuhkan arsitektur *multi-threading* atau asinkron (*asynchronous*) agar *request* baru tidak terblokir oleh *request* sebelumnya yang lambat.
+
+   ## Commit 5 Reflection Notes
+
+Pada tahap ini, kita menyelesaikan masalah *single-thread* dengan mengimplementasikan `ThreadPool`.
+
+1. **Konsep ThreadPool**
+   Alih-alih membuat *thread* baru setiap kali ada *request* (yang bisa membuat server overload), kita menyiapkan sejumlah *thread* yang sudah "standby". Di sini kita membuat 4 *workers*.
+
+2. **mpsc (Multiple Producer, Single Consumer) Channel**
+   Kita menggunakan *channel* sebagai alat komunikasi. `ThreadPool` bertindak sebagai *sender* dan *workers* bertindak sebagai *receiver*.
+
+3. **Arc dan Mutex**
+   Karena ada 4 *workers* yang menunggu di ujung *receiver* yang sama, *receiver* tersebut harus bisa di*share* secara aman ke banyak *thread*.
+   * `Arc` (Atomic Reference Counted) memungkinkan beberapa *thread* memiliki *ownership* (kepemilikan) referensi memori yang sama.
+   * `Mutex` memastikan hanya ada satu *worker* yang membuka gembok (*lock*) dan mengambil sebuah *job* di satu waktu tertentu, sehingga tidak ada dua *worker* yang berebut mengerjakan tugas yang sama.
+
+Dengan arsitektur ini, ketika `127.0.0.1:7878/sleep` diakses, hanya 1 *worker* yang sleep selama 10 detik. Tiga *worker* sisanya tetap bebas untuk melayani *request* halaman normal secara instan.
